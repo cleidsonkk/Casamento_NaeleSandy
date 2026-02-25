@@ -122,6 +122,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', sans-serif;
+    background:
+      radial-gradient(circle at 10% 5%, rgba(212, 175, 55, 0.08), transparent 30%),
+      radial-gradient(circle at 90% 20%, rgba(179, 139, 67, 0.08), transparent 34%),
+      linear-gradient(180deg, #f8f3ea 0%, #f4ecdf 55%, #f8f3ea 100%);
+    background-attachment: fixed;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -316,15 +321,24 @@
 
   /* Sections */
   .section-alternate-1 {
-    @apply bg-gradient-to-b from-[#fcfaf5] to-[#f4eee1];
+    background:
+      linear-gradient(180deg, rgba(252, 250, 245, 0.94) 0%, rgba(244, 238, 225, 0.94) 100%),
+      radial-gradient(circle at 15% 18%, rgba(212, 175, 55, 0.1), transparent 28%),
+      radial-gradient(circle at 88% 72%, rgba(172, 132, 56, 0.08), transparent 26%);
   }
 
   .section-alternate-2 {
-    @apply bg-gradient-to-b from-[#f4eee1] to-[#ece4d5];
+    background:
+      linear-gradient(180deg, rgba(244, 238, 225, 0.94) 0%, rgba(236, 228, 213, 0.95) 100%),
+      radial-gradient(circle at 88% 12%, rgba(212, 175, 55, 0.11), transparent 26%),
+      radial-gradient(circle at 8% 82%, rgba(172, 132, 56, 0.08), transparent 24%);
   }
 
   .section-alternate-3 {
-    @apply bg-gradient-to-b from-[#ffffff] to-[#fdfbf7];
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(253, 251, 247, 0.95) 100%),
+      radial-gradient(circle at 20% 78%, rgba(212, 175, 55, 0.1), transparent 24%),
+      radial-gradient(circle at 78% 18%, rgba(172, 132, 56, 0.08), transparent 22%);
   }
 
   .section-story {
@@ -430,6 +444,12 @@
     .container {
       padding-left: 1.5rem;
       padding-right: 1.5rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    body {
+      background-attachment: scroll;
     }
   }
 

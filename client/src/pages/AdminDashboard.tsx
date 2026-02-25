@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/_core/hooks/useAuth';
 import { trpc } from '@/lib/trpc';
+import { clearAdminAccessKey, getAdminAccessKey, setAdminAccessKey } from '@/lib/adminAccess';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, LogOut, Users, Gift, CreditCard, Settings, BarChart3 } from 'lucide-react';
+import { TRPCClientError } from '@trpc/client';
+import { Loader2, LogOut, Users, Gift, CreditCard, Settings, BarChart3, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import GuestsTab from '@/components/admin/GuestsTab';
 import GiftsTab from '@/components/admin/GiftsTab';
@@ -14,32 +16,90 @@ import SettingsTab from '@/components/admin/SettingsTab';
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
-  const { user, logout } = useAuth();
-  const { data: stats, isLoading: statsLoading } = trpc.dashboard.stats.useQuery();
+  const [accessKeyInput, setAccessKeyInput] = useState('');
+  const [hasAdminAccess, setHasAdminAccess] = useState(() => Boolean(getAdminAccessKey()));
+  const { data: stats, isLoading: statsLoading, error: statsError } = trpc.dashboard.stats.useQuery(undefined, {
+    enabled: hasAdminAccess,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  if (!user || user.role !== 'admin') {
+  useEffect(() => {
+    if (!(statsError instanceof TRPCClientError)) return;
+    if (statsError.data?.code !== 'UNAUTHORIZED' && statsError.data?.code !== 'FORBIDDEN') return;
+    clearAdminAccessKey();
+    setHasAdminAccess(false);
+    toast.error('Chave de admin invalida. Tente novamente.');
+  }, [statsError]);
+
+  const handleUnlockAdmin = () => {
+    const normalized = accessKeyInput.trim();
+    if (!normalized) {
+      toast.error('Digite a chave de acesso admin');
+      return;
+    }
+    setAdminAccessKey(normalized);
+    setHasAdminAccess(true);
+  };
+
+  if (!hasAdminAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-muted-foreground">Acesso restrito a administradores</p>
-          <Button onClick={() => setLocation('/')} className="btn-luxury">
-            Voltar para Home
-          </Button>
+        <div className="w-full max-w-md card-luxury space-y-5">
+          <div className="text-center space-y-2">
+            <ShieldCheck className="w-10 h-10 text-accent mx-auto" />
+            <h1 className="text-3xl font-playfair">Painel dos Noivos</h1>
+            <p className="text-sm text-muted-foreground">
+              Digite a chave admin para editar precos, confirmar pix e ver RSVPs.
+            </p>
+          </div>
+          <Input
+            type="password"
+            placeholder="Chave de acesso admin"
+            value={accessKeyInput}
+            onChange={e => setAccessKeyInput(e.target.value)}
+            className="input-luxury h-11"
+          />
+          <div className="flex gap-3">
+            <Button onClick={handleUnlockAdmin} className="btn-luxury flex-1">
+              Entrar no painel
+            </Button>
+            <Button onClick={() => setLocation('/')} variant="outline" className="flex-1">
+              Voltar
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            Configure a variavel `ADMIN_ACCESS_KEY` no Vercel para liberar acesso.
+          </p>
         </div>
       </div>
     );
   }
 
-  const handleLogout = async () => {
-    await logout();
-    setLocation('/');
+  const handleLogout = () => {
+    clearAdminAccessKey();
+    setHasAdminAccess(false);
+    toast.success('Acesso admin encerrado');
   };
 
   if (statsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  if (statsError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Nao foi possivel carregar o painel admin.</p>
+          <Button onClick={handleLogout} className="btn-luxury">
+            Entrar novamente
+          </Button>
+        </div>
       </div>
     );
   }
@@ -55,9 +115,6 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              Bem-vindo, <span className="font-semibold text-foreground">{user.name}</span>
-            </span>
             <Button
               onClick={handleLogout}
               variant="outline"
@@ -75,7 +132,7 @@ export default function AdminDashboard() {
       <main className="container py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           {/* Tabs Navigation */}
-          <TabsList className="grid w-full grid-cols-4 bg-card border border-border">
+          <TabsList className="grid w-full grid-cols-5 bg-card border border-border">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">Dashboard</span>

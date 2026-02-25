@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { getAdminAccessKey } from "@/lib/adminAccess";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
@@ -43,8 +44,15 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       fetch(input, init) {
+        const adminAccessKey = getAdminAccessKey();
+        const headers = new Headers(init?.headers ?? {});
+        if (adminAccessKey) {
+          headers.set("x-admin-key", adminAccessKey);
+        }
+
         return globalThis.fetch(input, {
           ...(init ?? {}),
+          headers,
           credentials: "include",
         });
       },

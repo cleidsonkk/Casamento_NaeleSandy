@@ -1,12 +1,13 @@
 import { createHTTPHandler } from "@trpc/server/adapters/standalone";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getAdminAccessToken, resolveAdminUser } from "../server/_core/adminAccess";
 import { appRouter } from "../server/routers";
 
 const createPublicContext = async (opts: { req: IncomingMessage; res: ServerResponse }) => ({
   req: opts.req,
   res: opts.res,
-  user: null,
+  user: resolveAdminUser(getAdminAccessToken(opts.req.headers)),
 });
 
 const trpcHandler = createHTTPHandler({

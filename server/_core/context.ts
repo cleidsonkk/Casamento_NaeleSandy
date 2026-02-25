@@ -1,6 +1,7 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { User } from "../../drizzle/schema";
+import { getAdminAccessToken, resolveAdminUser } from "./adminAccess";
 import { sdk } from "./sdk";
 
 type TrpcRequest = CreateExpressContextOptions["req"] | IncomingMessage;
@@ -15,13 +16,16 @@ export type TrpcContext = {
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
+  const adminToken = getAdminAccessToken(opts.req.headers);
+  let user: User | null = resolveAdminUser(adminToken);
 
-  try {
-    user = await sdk.authenticateRequest(opts.req);
-  } catch (error) {
-    // Authentication is optional for public procedures.
-    user = null;
+  if (!user) {
+    try {
+      user = await sdk.authenticateRequest(opts.req);
+    } catch (error) {
+      // Authentication is optional for public procedures.
+      user = null;
+    }
   }
 
   return {
