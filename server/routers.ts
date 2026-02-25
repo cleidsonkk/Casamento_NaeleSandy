@@ -6,6 +6,45 @@ import { z } from "zod";
 import * as db from "./db";
 import { TRPCError } from "@trpc/server";
 import { notifyOwner } from "./_core/notification";
+import { DEFAULT_GIFTS } from "./defaultGifts";
+
+const buildFallbackEvent = () => {
+  const now = new Date();
+  const eventDate = new Date();
+  eventDate.setDate(eventDate.getDate() + 30);
+
+  return {
+    id: 0,
+    title: "Amonael & Sandriellyy",
+    description: "Nosso grande dia",
+    eventDate,
+    eventTime: "18:00",
+    location: "Local a confirmar",
+    pixKey: "",
+    pixKeyType: "celular" as const,
+    receiverName: "",
+    whatsappContact: "",
+    whatsappMessage: "",
+    giftReservationLimit: "unlimited" as const,
+    giftReservationTimeout: 120,
+    createdAt: now,
+    updatedAt: now,
+  };
+};
+
+const buildFallbackGifts = () =>
+  DEFAULT_GIFTS.map((gift, index) => ({
+    id: index + 1,
+    eventId: 0,
+    name: gift.name,
+    description: gift.description ?? null,
+    imageUrl: gift.imageUrl ?? null,
+    suggestedValue: gift.suggestedValue,
+    status: "available" as const,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }));
 
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
@@ -25,26 +64,31 @@ export const appRouter = router({
 
   event: router({
     get: publicProcedure.query(async () => {
-      let event = await db.getFirstEvent();
-      if (!event) {
-        const futureDate = new Date();
-        futureDate.setDate(futureDate.getDate() + 30);
-        event = await db.createEvent({
-          title: 'Nosso Grande Dia',
-          description: 'Um evento especial para celebrar',
-          eventDate: futureDate,
-          eventTime: '18:00',
-          location: 'Local a definir',
-          pixKey: '',
-          pixKeyType: 'celular',
-          receiverName: '',
-          whatsappContact: '',
-          whatsappMessage: '',
-          giftReservationLimit: 'unlimited',
-          giftReservationTimeout: 120,
-        });
+      try {
+        let event = await db.getFirstEvent();
+        if (!event) {
+          const futureDate = new Date();
+          futureDate.setDate(futureDate.getDate() + 30);
+          event = await db.createEvent({
+            title: 'Nosso Grande Dia',
+            description: 'Um evento especial para celebrar',
+            eventDate: futureDate,
+            eventTime: '18:00',
+            location: 'Local a definir',
+            pixKey: '',
+            pixKeyType: 'celular',
+            receiverName: '',
+            whatsappContact: '',
+            whatsappMessage: '',
+            giftReservationLimit: 'unlimited',
+            giftReservationTimeout: 120,
+          });
+        }
+        return event ?? buildFallbackEvent();
+      } catch (error) {
+        console.error("[event.get] Fallback due to database error:", error);
+        return buildFallbackEvent();
       }
-      return event;
     }),
     
     update: adminProcedure
@@ -147,9 +191,14 @@ export const appRouter = router({
 
   gift: router({
     list: publicProcedure.query(async () => {
-      const event = await db.getFirstEvent();
-      if (!event) return [];
-      return db.ensureDefaultGiftsForEvent(event.id);
+      try {
+        const event = await db.getFirstEvent();
+        if (!event) return buildFallbackGifts();
+        return db.ensureDefaultGiftsForEvent(event.id);
+      } catch (error) {
+        console.error("[gift.list] Fallback due to database error:", error);
+        return buildFallbackGifts();
+      }
     }),
 
     create: adminProcedure
