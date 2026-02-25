@@ -198,7 +198,8 @@
   .hero-date-line {
     @apply inline-flex items-center justify-center rounded-full px-6 py-3;
     @apply border border-white/25 text-white/95 bg-white/8 backdrop-blur-sm;
-    @apply text-2xl font-cormorant;
+    @apply text-2xl;
+    font-family: 'Cormorant Garamond', serif;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   }
 
