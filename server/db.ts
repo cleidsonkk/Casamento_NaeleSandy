@@ -258,6 +258,16 @@ export async function getGiftSelectionsByGift(giftId: number) {
   return db.select().from(giftSelections).where(eq(giftSelections.giftId, giftId));
 }
 
+export async function getGiftSelectionsByEvent(eventId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(giftSelections)
+    .where(eq(giftSelections.eventId, eventId))
+    .orderBy(desc(giftSelections.selectedAt));
+}
+
 export async function createGiftSelection(
   data: Omit<GiftSelection, "id" | "createdAt" | "updatedAt"> & { reservedUntil?: Date | null },
 ): Promise<GiftSelection | undefined> {

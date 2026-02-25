@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, Plus, Pencil } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Table,
@@ -25,9 +25,12 @@ import { Textarea } from '@/components/ui/textarea';
 
 export default function GiftsTab() {
   const { data: gifts = [], isLoading, refetch } = trpc.gift.list.useQuery();
+  const { data: guests = [] } = trpc.guest.list.useQuery();
+  const { data: giftSelections = [] } = trpc.giftSelection.list.useQuery();
   const deleteGift = trpc.gift.delete.useMutation();
   const createGift = trpc.gift.create.useMutation();
   const updateGift = trpc.gift.update.useMutation();
+
   const [showDialog, setShowDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingGiftId, setEditingGiftId] = useState<number | null>(null);
@@ -45,11 +48,22 @@ export default function GiftsTab() {
     status: 'available' as 'available' | 'reserved' | 'completed',
   });
 
+  const guestMap = useMemo(() => new Map(guests.map(guest => [guest.id, guest])), [guests]);
+  const selectionByGiftMap = useMemo(() => {
+    const map = new Map<number, (typeof giftSelections)[number]>();
+    for (const selection of giftSelections) {
+      if (!map.has(selection.giftId)) {
+        map.set(selection.giftId, selection);
+      }
+    }
+    return map;
+  }, [giftSelections]);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.name.trim() || !formData.suggestedValue.trim()) {
-      toast.error('Nome e valor são obrigatórios');
+      toast.error('Nome e valor sao obrigatorios');
       return;
     }
 
@@ -152,17 +166,17 @@ export default function GiftsTab() {
                 <Input
                   id="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ex: Jogo de Cama"
                 />
               </div>
               <div>
-                <Label htmlFor="description">Descrição</Label>
+                <Label htmlFor="description">Descricao</Label>
                 <Textarea
                   id="description"
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descrição do presente"
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descricao do presente"
                   className="min-h-20"
                 />
               </div>
@@ -171,7 +185,7 @@ export default function GiftsTab() {
                 <Input
                   id="imageUrl"
                   value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                  onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
                   placeholder="https://..."
                 />
               </div>
@@ -182,17 +196,12 @@ export default function GiftsTab() {
                   type="number"
                   step="0.01"
                   value={formData.suggestedValue}
-                  onChange={(e) => setFormData({ ...formData, suggestedValue: e.target.value })}
+                  onChange={e => setFormData({ ...formData, suggestedValue: e.target.value })}
                   placeholder="0.00"
                 />
               </div>
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDialog(false)}
-                  className="flex-1"
-                >
+                <Button type="button" variant="outline" onClick={() => setShowDialog(false)} className="flex-1">
                   Cancelar
                 </Button>
                 <Button type="submit" className="flex-1 btn-luxury" disabled={createGift.isPending}>
@@ -215,7 +224,7 @@ export default function GiftsTab() {
                 <Input
                   id="edit-name"
                   value={editData.name}
-                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                  onChange={e => setEditData({ ...editData, name: e.target.value })}
                 />
               </div>
               <div>
@@ -223,7 +232,7 @@ export default function GiftsTab() {
                 <Textarea
                   id="edit-description"
                   value={editData.description}
-                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  onChange={e => setEditData({ ...editData, description: e.target.value })}
                   className="min-h-20"
                 />
               </div>
@@ -232,7 +241,7 @@ export default function GiftsTab() {
                 <Input
                   id="edit-imageUrl"
                   value={editData.imageUrl}
-                  onChange={(e) => setEditData({ ...editData, imageUrl: e.target.value })}
+                  onChange={e => setEditData({ ...editData, imageUrl: e.target.value })}
                 />
               </div>
               <div>
@@ -242,7 +251,7 @@ export default function GiftsTab() {
                   type="number"
                   step="0.01"
                   value={editData.suggestedValue}
-                  onChange={(e) => setEditData({ ...editData, suggestedValue: e.target.value })}
+                  onChange={e => setEditData({ ...editData, suggestedValue: e.target.value })}
                 />
               </div>
               <div>
@@ -250,7 +259,9 @@ export default function GiftsTab() {
                 <select
                   id="edit-status"
                   value={editData.status}
-                  onChange={(e) => setEditData({ ...editData, status: e.target.value as 'available' | 'reserved' | 'completed' })}
+                  onChange={e =>
+                    setEditData({ ...editData, status: e.target.value as 'available' | 'reserved' | 'completed' })
+                  }
                   className="input-luxury h-11 w-full rounded-md px-3"
                 >
                   <option value="available">Disponivel</option>
@@ -269,6 +280,7 @@ export default function GiftsTab() {
             </form>
           </DialogContent>
         </Dialog>
+
         {gifts.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             Nenhum presente cadastrado ainda.
@@ -281,54 +293,61 @@ export default function GiftsTab() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Reservado por</TableHead>
                   <TableHead>Ativo</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead className="text-right">Acoes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {gifts.map((gift) => (
-                  <TableRow key={gift.id} className="border-border hover:bg-muted/50">
-                    <TableCell className="font-medium">{gift.name}</TableCell>
-                    <TableCell>R$ {parseFloat(gift.suggestedValue.toString()).toFixed(2)}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                          gift.status === 'available'
-                            ? 'bg-green-100 text-green-700'
-                            : gift.status === 'reserved'
-                            ? 'bg-yellow-100 text-yellow-700'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {gift.status === 'available'
-                          ? 'Disponível'
-                          : gift.status === 'reserved'
-                          ? 'Reservado'
-                          : 'Concluído'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={gift.isActive ? 'text-green-600 font-semibold' : 'text-red-600'}>
-                        {gift.isActive ? 'Sim' : 'Não'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => startEdit(gift)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(gift.id)}
-                          disabled={deleteGift.isPending}
+                {gifts.map(gift => {
+                  const selection = selectionByGiftMap.get(gift.id);
+                  const guestName = selection ? guestMap.get(selection.guestId)?.name ?? `Convidado #${selection.guestId}` : '-';
+
+                  return (
+                    <TableRow key={gift.id} className="border-border hover:bg-muted/50">
+                      <TableCell className="font-medium">{gift.name}</TableCell>
+                      <TableCell>R$ {parseFloat(gift.suggestedValue.toString()).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <span
+                          className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                            gift.status === 'available'
+                              ? 'bg-green-100 text-green-700'
+                              : gift.status === 'reserved'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                          {gift.status === 'available'
+                            ? 'Disponivel'
+                            : gift.status === 'reserved'
+                            ? 'Reservado'
+                            : 'Concluido'}
+                        </span>
+                      </TableCell>
+                      <TableCell>{guestName}</TableCell>
+                      <TableCell>
+                        <span className={gift.isActive ? 'text-green-600 font-semibold' : 'text-red-600'}>
+                          {gift.isActive ? 'Sim' : 'Nao'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => startEdit(gift)}>
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(gift.id)}
+                            disabled={deleteGift.isPending}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

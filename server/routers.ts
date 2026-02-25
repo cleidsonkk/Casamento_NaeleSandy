@@ -302,6 +302,12 @@ export const appRouter = router({
         return db.getGiftSelectionsByGuest(input.guestId);
       }),
 
+    list: adminProcedure.query(async () => {
+      const event = await db.getFirstEvent();
+      if (!event) return [];
+      return db.getGiftSelectionsByEvent(event.id);
+    }),
+
     delete: adminProcedure
       .input(z.object({ selectionId: z.number() }))
       .mutation(async ({ input }) => {
