@@ -20,6 +20,14 @@ app.use(
   }),
 );
 
+app.use(
+  "/trpc",
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  }),
+);
+
 export default function handler(req: VercelRequest, res: VercelResponse) {
   return app(req, res);
 }
