@@ -380,7 +380,8 @@
   }
 
   .countdown-panel strong {
-    @apply text-4xl font-playfair text-foreground;
+    @apply text-4xl text-foreground;
+    font-family: 'Playfair Display', serif;
   }
 
   .countdown-panel span {
