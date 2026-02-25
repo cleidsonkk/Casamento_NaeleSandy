@@ -146,10 +146,14 @@ export const appRouter = router({
         });
 
         if (guest) {
-          await notifyOwner({
-            title: '🎉 Novo RSVP Confirmado',
-            content: `${guest.name} confirmou presença com ${guest.companions} acompanhante(s)`,
-          });
+          try {
+            await notifyOwner({
+              title: '🎉 Novo RSVP Confirmado',
+              content: `${guest.name} confirmou presença com ${guest.companions} acompanhante(s)`,
+            });
+          } catch (error) {
+            console.warn("[guest.create] Notification failed, RSVP kept:", error);
+          }
         }
 
         return guest;
@@ -279,10 +283,14 @@ export const appRouter = router({
           await db.updateGift(input.giftId, { status: 'reserved' });
 
           const guest = await db.getGuestById(input.guestId);
-          await notifyOwner({
-            title: '🎁 Presente Reservado',
-            content: `${guest?.name} reservou: ${gift.name}`,
-          });
+          try {
+            await notifyOwner({
+              title: '🎁 Presente Reservado',
+              content: `${guest?.name} reservou: ${gift.name}`,
+            });
+          } catch (error) {
+            console.warn("[giftSelection.create] Notification failed, selection kept:", error);
+          }
         }
 
         return selection;
@@ -343,10 +351,14 @@ export const appRouter = router({
         if (payment) {
           const guest = await db.getGuestById(payment.guestId);
           const amount = parseFloat(payment.amount.toString()).toFixed(2);
-          await notifyOwner({
-            title: '✅ Pagamento Confirmado',
-            content: `Pagamento de ${guest?.name} foi confirmado: R$ ${amount}`,
-          });
+          try {
+            await notifyOwner({
+              title: '✅ Pagamento Confirmado',
+              content: `Pagamento de ${guest?.name} foi confirmado: R$ ${amount}`,
+            });
+          } catch (error) {
+            console.warn("[payment.confirm] Notification failed, payment kept:", error);
+          }
         }
 
         return payment;
