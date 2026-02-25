@@ -12,6 +12,43 @@ import { QRCodeSVG as QRCode } from 'qrcode.react';
 const DEFAULT_COUPLE_NAMES = 'Amonael & Sandriellyy';
 const DEFAULT_HERO_IMAGE =
   'https://images.unsplash.com/photo-1519741497674-611481863552?w=1800&h=1400&fit=crop';
+const FALLBACK_EVENT = {
+  id: 0,
+  title: 'Amonael & Sandriellyy',
+  description: 'Nosso grande dia',
+  eventDate: new Date('2026-03-27T18:00:00'),
+  eventTime: '18:00',
+  location: 'Local a confirmar',
+  pixKey: '',
+  pixKeyType: 'celular',
+  receiverName: '',
+};
+const FALLBACK_GIFTS: GiftType[] = [
+  {
+    id: 1001,
+    name: 'Air fryer',
+    description: 'Para receitas praticas no dia a dia.',
+    imageUrl: 'https://picsum.photos/seed/air-fryer/1200/900',
+    suggestedValue: '399.90',
+    status: 'available',
+  },
+  {
+    id: 1002,
+    name: 'Jogo de panelas',
+    description: 'Conjunto completo para a cozinha da casa nova.',
+    imageUrl: 'https://picsum.photos/seed/jogo-panelas/1200/900',
+    suggestedValue: '549.90',
+    status: 'available',
+  },
+  {
+    id: 1003,
+    name: 'Jogo de cama queen',
+    description: 'Conforto para noites tranquilas no novo lar.',
+    imageUrl: 'https://picsum.photos/seed/jogo-cama-queen/1200/900',
+    suggestedValue: '279.90',
+    status: 'available',
+  },
+];
 
 type FormErrors = {
   name?: string;
@@ -49,8 +86,14 @@ function toCountdown(targetDate: Date): Countdown {
 }
 
 export default function Home() {
-  const { data: event, isLoading: eventLoading } = trpc.event.get.useQuery();
-  const { data: gifts = [], isLoading: giftsLoading } = trpc.gift.list.useQuery();
+  const eventQuery = trpc.event.get.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const giftsQuery = trpc.gift.list.useQuery(undefined, {
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
   const createGuest = trpc.guest.create.useMutation();
   const createGiftSelection = trpc.giftSelection.create.useMutation();
   const createPayment = trpc.payment.create.useMutation();
@@ -90,28 +133,31 @@ export default function Home() {
     }
   }, []);
 
+  const event = eventQuery.data ?? FALLBACK_EVENT;
+  const gifts = giftsQuery.data && giftsQuery.data.length > 0 ? giftsQuery.data : FALLBACK_GIFTS;
+
   useEffect(() => {
-    if (!event?.eventDate) return;
+    if (!event.eventDate) return;
 
     const target = new Date(event.eventDate);
     const tick = () => setCountdown(toCountdown(target));
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [event?.eventDate]);
+  }, [event.eventDate]);
 
   const formattedDate = useMemo(() => {
-    if (!event?.eventDate) return '';
+    if (!event.eventDate) return '';
     const eventDate = new Date(event.eventDate);
     return eventDate.toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'long',
       year: 'numeric',
     });
-  }, [event?.eventDate]);
+  }, [event.eventDate]);
 
   const coupleNames =
-    event?.title?.trim() && event.title !== 'Nosso Grande Dia' ? event.title : DEFAULT_COUPLE_NAMES;
+    event.title?.trim() && event.title !== 'Nosso Grande Dia' ? event.title : DEFAULT_COUPLE_NAMES;
 
   const formatWhatsapp = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -159,8 +205,10 @@ export default function Home() {
         document.getElementById('presentes')?.scrollIntoView({ behavior: 'smooth' });
       }
     } catch (error) {
-      toast.error('Erro ao confirmar presenca. Tente novamente.');
-      console.error(error);
+      const fallbackGuestId = Date.now();
+      setGuestId(fallbackGuestId);
+      localStorage.setItem('guestId', String(fallbackGuestId));
+      toast.error('API indisponivel. RSVP salvo localmente para continuar.');
     }
   };
 
@@ -189,8 +237,10 @@ export default function Home() {
         setShowPixModal(true);
       }
     } catch (error) {
-      toast.error('Erro ao selecionar presente. Tente novamente.');
-      console.error(error);
+      setSelectedGift(gift);
+      setSelectedPaymentId(Date.now());
+      setShowPixModal(true);
+      toast.error('API indisponivel. Continue com o Pix e confirme manualmente.');
     }
   };
 
@@ -219,18 +269,10 @@ export default function Home() {
     }
   };
 
-  if (eventLoading) {
+  if (eventQuery.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-
-  if (!event) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Evento nao encontrado</p>
       </div>
     );
   }
@@ -458,10 +500,15 @@ export default function Home() {
         <div className="max-w-6xl mx-auto text-center mb-10">
           <h2 className="text-5xl font-playfair mb-4">Lista de Presentes</h2>
           <p className="text-lg text-muted-foreground">Escolha um presente e contribua de forma simbolica.</p>
+          {eventQuery.isError || giftsQuery.isError ? (
+            <p className="text-sm text-muted-foreground mt-2">
+              Modo contingencia ativo: dados locais exibidos enquanto a API normaliza.
+            </p>
+          ) : null}
         </div>
 
         <div className="max-w-6xl mx-auto">
-          {giftsLoading ? (
+          {giftsQuery.isLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="w-7 h-7 animate-spin text-accent" />
             </div>
