@@ -3,7 +3,7 @@ import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Trash2, Plus } from 'lucide-react';
+import { Loader2, Trash2, Plus, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Table,
@@ -27,12 +27,22 @@ export default function GiftsTab() {
   const { data: gifts = [], isLoading, refetch } = trpc.gift.list.useQuery();
   const deleteGift = trpc.gift.delete.useMutation();
   const createGift = trpc.gift.create.useMutation();
+  const updateGift = trpc.gift.update.useMutation();
   const [showDialog, setShowDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingGiftId, setEditingGiftId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     imageUrl: '',
     suggestedValue: '',
+  });
+  const [editData, setEditData] = useState({
+    name: '',
+    description: '',
+    imageUrl: '',
+    suggestedValue: '',
+    status: 'available' as 'available' | 'reserved' | 'completed',
   });
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -70,6 +80,45 @@ export default function GiftsTab() {
       refetch();
     } catch (error) {
       toast.error('Erro ao remover presente');
+      console.error(error);
+    }
+  };
+
+  const startEdit = (gift: (typeof gifts)[number]) => {
+    setEditingGiftId(gift.id);
+    setEditData({
+      name: gift.name,
+      description: gift.description ?? '',
+      imageUrl: gift.imageUrl ?? '',
+      suggestedValue: Number(gift.suggestedValue).toFixed(2),
+      status: gift.status as 'available' | 'reserved' | 'completed',
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGiftId) return;
+    if (!editData.name.trim() || !editData.suggestedValue.trim()) {
+      toast.error('Nome e valor sao obrigatorios');
+      return;
+    }
+
+    try {
+      await updateGift.mutateAsync({
+        giftId: editingGiftId,
+        name: editData.name.trim(),
+        description: editData.description.trim() || undefined,
+        imageUrl: editData.imageUrl.trim() || undefined,
+        suggestedValue: parseFloat(editData.suggestedValue),
+        status: editData.status,
+      });
+      toast.success('Presente atualizado com sucesso');
+      setShowEditDialog(false);
+      setEditingGiftId(null);
+      refetch();
+    } catch (error) {
+      toast.error('Erro ao atualizar presente');
       console.error(error);
     }
   };
@@ -155,6 +204,71 @@ export default function GiftsTab() {
         </Dialog>
       </CardHeader>
       <CardContent>
+        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Presente</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div>
+                <Label htmlFor="edit-name">Nome *</Label>
+                <Input
+                  id="edit-name"
+                  value={editData.name}
+                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Descricao</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editData.description}
+                  onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                  className="min-h-20"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-imageUrl">URL da Imagem</Label>
+                <Input
+                  id="edit-imageUrl"
+                  value={editData.imageUrl}
+                  onChange={(e) => setEditData({ ...editData, imageUrl: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-value">Valor Sugerido (R$) *</Label>
+                <Input
+                  id="edit-value"
+                  type="number"
+                  step="0.01"
+                  value={editData.suggestedValue}
+                  onChange={(e) => setEditData({ ...editData, suggestedValue: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-status">Status</Label>
+                <select
+                  id="edit-status"
+                  value={editData.status}
+                  onChange={(e) => setEditData({ ...editData, status: e.target.value as 'available' | 'reserved' | 'completed' })}
+                  className="input-luxury h-11 w-full rounded-md px-3"
+                >
+                  <option value="available">Disponivel</option>
+                  <option value="reserved">Reservado</option>
+                  <option value="completed">Concluido</option>
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowEditDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" className="flex-1 btn-luxury" disabled={updateGift.isPending}>
+                  {updateGift.isPending ? 'Salvando...' : 'Salvar'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
         {gifts.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             Nenhum presente cadastrado ainda.
@@ -199,14 +313,19 @@ export default function GiftsTab() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(gift.id)}
-                        disabled={deleteGift.isPending}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => startEdit(gift)}>
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(gift.id)}
+                          disabled={deleteGift.isPending}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
