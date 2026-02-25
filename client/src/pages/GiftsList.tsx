@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { trpc } from '@/lib/trpc';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Loader2, ArrowLeft, Gift, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG as QRCode } from 'qrcode.react';
+import { getGiftImageSrc, getGiftPlaceholderDataUrl } from '@/lib/giftPlaceholder';
 
 export default function GiftsList() {
   const [, setLocation] = useLocation();
@@ -21,11 +22,10 @@ export default function GiftsList() {
   const createPayment = trpc.payment.create.useMutation();
   const markPaymentAsInformed = trpc.payment.markAsInformed.useMutation();
 
-  // Get guestId from session or localStorage
   useEffect(() => {
     const storedGuestId = localStorage.getItem('guestId');
     if (storedGuestId) {
-      setGuestId(parseInt(storedGuestId));
+      setGuestId(parseInt(storedGuestId, 10));
     }
   }, []);
 
@@ -36,13 +36,11 @@ export default function GiftsList() {
     }
 
     try {
-      // Create gift selection
       await createGiftSelection.mutateAsync({
         giftId: gift.id,
         guestId,
       });
 
-      // Create payment
       const payment = await createPayment.mutateAsync({
         guestId,
         giftSelectionId: gift.id,
@@ -67,7 +65,7 @@ export default function GiftsList() {
       await markPaymentAsInformed.mutateAsync({
         paymentId: selectedPaymentId,
       });
-      toast.success('✨ Pagamento registrado com sucesso!');
+      toast.success('Pagamento registrado com sucesso!');
       setShowPixModal(false);
       setTimeout(() => setLocation('/'), 2000);
     } catch (error) {
@@ -80,7 +78,7 @@ export default function GiftsList() {
     try {
       await navigator.clipboard.writeText(pixKey);
       setCopied(true);
-      toast.success('✓ Chave Pix copiada!');
+      toast.success('Chave Pix copiada!');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error('Erro ao copiar');
@@ -97,7 +95,6 @@ export default function GiftsList() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-accent/5 py-16 px-4">
-      {/* Header */}
       <div className="max-w-6xl mx-auto mb-16">
         <button
           onClick={() => setLocation('/')}
@@ -109,11 +106,11 @@ export default function GiftsList() {
 
         <div className="text-center space-y-6 mb-16">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent"></div>
+            <div className="h-px w-12 bg-gradient-to-r from-transparent to-accent" />
             <span className="text-xs font-semibold text-accent tracking-[0.2em] uppercase">
               Escolha seu Presente
             </span>
-            <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent"></div>
+            <div className="h-px w-12 bg-gradient-to-l from-transparent to-accent" />
           </div>
 
           <h1 className="text-5xl md:text-6xl font-playfair font-bold text-foreground">
@@ -121,13 +118,12 @@ export default function GiftsList() {
           </h1>
 
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Escolha um presente especial para nos ajudar a celebrar este momento único. 
+            Escolha um presente especial para nos ajudar a celebrar este momento único.
             Cada presente é uma forma de compartilhar da nossa alegria.
           </p>
         </div>
       </div>
 
-      {/* Gifts Grid */}
       <div className="max-w-6xl mx-auto">
         {gifts.length === 0 ? (
           <div className="text-center py-16">
@@ -136,28 +132,30 @@ export default function GiftsList() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {gifts.map((gift) => (
+            {gifts.map(gift => (
               <div
                 key={gift.id}
                 className="group card-luxury overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col"
               >
-                {/* Image */}
-                {gift.imageUrl && (
-                  <div className="relative h-64 overflow-hidden bg-accent/5">
-                    <img
-                      src={gift.imageUrl}
-                      alt={gift.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                    {gift.status === 'reserved' && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <span className="text-white font-semibold text-lg">Reservado</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="relative h-64 overflow-hidden bg-accent/5">
+                  <img
+                    src={getGiftImageSrc(gift.imageUrl, gift.name)}
+                    alt={gift.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    loading="lazy"
+                    onError={(event) => {
+                      const target = event.currentTarget;
+                      target.onerror = null;
+                      target.src = getGiftPlaceholderDataUrl(gift.name);
+                    }}
+                  />
+                  {gift.status === 'reserved' && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                      <span className="text-white font-semibold text-lg">Reservado</span>
+                    </div>
+                  )}
+                </div>
 
-                {/* Content */}
                 <div className="p-6 flex-1 flex flex-col">
                   <h3 className="text-xl font-playfair font-bold text-foreground mb-2">
                     {gift.name}
@@ -194,7 +192,6 @@ export default function GiftsList() {
         )}
       </div>
 
-      {/* Pix Modal */}
       <Dialog open={showPixModal} onOpenChange={setShowPixModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -205,7 +202,6 @@ export default function GiftsList() {
 
           {selectedGift && event && (
             <div className="space-y-6 py-6">
-              {/* Gift Info */}
               <div className="text-center space-y-2">
                 <h3 className="text-lg font-semibold text-foreground">{selectedGift.name}</h3>
                 <p className="text-3xl font-bold text-accent">
@@ -213,7 +209,6 @@ export default function GiftsList() {
                 </p>
               </div>
 
-              {/* QR Code */}
               {event.pixKey && (
                 <div className="flex justify-center">
                   <div className="p-4 bg-white rounded-lg">
@@ -221,13 +216,12 @@ export default function GiftsList() {
                       value={`00020126580014br.gov.bcb.pix0136${event.pixKey}52040000530398654061${parseFloat(selectedGift.suggestedValue.toString()).toFixed(2)}5802BR5913${event.receiverName}6009SAO PAULO62410503***63041D3D`}
                       size={200}
                       level="H"
-                      includeMargin={true}
+                      includeMargin
                     />
                   </div>
                 </div>
               )}
 
-              {/* Pix Key */}
               {event.pixKey && (
                 <div className="space-y-3">
                   <p className="text-sm text-muted-foreground text-center">
@@ -256,7 +250,6 @@ export default function GiftsList() {
                 </div>
               )}
 
-              {/* Receiver Info */}
               {event.receiverName && (
                 <div className="bg-accent/5 rounded-lg p-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1">Recebedor</p>
@@ -264,7 +257,6 @@ export default function GiftsList() {
                 </div>
               )}
 
-              {/* Actions */}
               <div className="flex gap-3 pt-4">
                 <Button
                   onClick={() => setShowPixModal(false)}
@@ -284,7 +276,7 @@ export default function GiftsList() {
                       Registrando...
                     </>
                   ) : (
-                    'Já Fiz o Pix'
+                    'Já fiz o Pix'
                   )}
                 </Button>
               </div>

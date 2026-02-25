@@ -197,10 +197,14 @@ export async function ensureDefaultGiftsForEvent(eventId: number) {
   const db = await getDb();
   if (!db) return [];
 
-  const existing = await db.select({ id: gifts.id }).from(gifts).where(eq(gifts.eventId, eventId)).limit(1);
-  if (existing.length > 0) return getGiftsByEvent(eventId);
+  const existing = await db
+    .select({ id: gifts.id, name: gifts.name })
+    .from(gifts)
+    .where(eq(gifts.eventId, eventId));
+  const existingNames = new Set(existing.map(item => item.name.toLowerCase().trim()));
 
   for (const gift of DEFAULT_GIFTS) {
+    if (existingNames.has(gift.name.toLowerCase().trim())) continue;
     await db.insert(gifts).values({
       eventId,
       name: gift.name,

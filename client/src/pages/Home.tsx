@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Loader2, ChevronDown, Gift, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG as QRCode } from 'qrcode.react';
+import { getGiftImageSrc, getGiftPlaceholderDataUrl } from '@/lib/giftPlaceholder';
 
 const DEFAULT_COUPLE_NAMES = 'Amonael & Sandriellyy';
 const DEFAULT_HERO_IMAGE =
@@ -27,7 +28,7 @@ const FALLBACK_GIFTS: GiftType[] = [
   {
     id: 1001,
     name: 'Air fryer',
-    description: 'Para receitas praticas no dia a dia.',
+    description: 'Para receitas práticas no dia a dia.',
     imageUrl: 'https://source.unsplash.com/1200x900/?airfryer,kitchen',
     suggestedValue: '399.90',
     status: 'available',
@@ -173,7 +174,7 @@ export default function Home() {
 
     if (!formData.name.trim()) errors.name = 'Informe seu nome completo';
     if (!phoneDigits) errors.whatsapp = 'Informe seu WhatsApp';
-    if (phoneDigits && phoneDigits.length < 10) errors.whatsapp = 'Numero incompleto';
+    if (phoneDigits && phoneDigits.length < 10) errors.whatsapp = 'Número incompleto';
     if (formData.companions < 0 || formData.companions > 10) {
       errors.companions = 'Use um numero entre 0 e 10';
     }
@@ -185,7 +186,7 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
-      toast.error('Revise os campos obrigatorios');
+      toast.error('Revise os campos obrigatórios');
       return;
     }
 
@@ -201,14 +202,14 @@ export default function Home() {
       if (guest) {
         setGuestId(guest.id);
         localStorage.setItem('guestId', String(guest.id));
-        toast.success('Presenca confirmada. Agora escolha um presente');
+        toast.success('Presença confirmada. Agora escolha um presente');
         document.getElementById('presentes')?.scrollIntoView({ behavior: 'smooth' });
       }
     } catch (error) {
       const fallbackGuestId = Date.now();
       setGuestId(fallbackGuestId);
       localStorage.setItem('guestId', String(fallbackGuestId));
-      toast.error('API indisponivel. RSVP salvo localmente para continuar.');
+      toast.error('API indisponível. RSVP salvo localmente para continuar.');
     }
   };
 
@@ -240,7 +241,7 @@ export default function Home() {
       setSelectedGift(gift);
       setSelectedPaymentId(Date.now());
       setShowPixModal(true);
-      toast.error('API indisponivel. Continue com o Pix e confirme manualmente.');
+      toast.error('API indisponível. Continue com o Pix e confirme manualmente.');
     }
   };
 
@@ -332,7 +333,7 @@ export default function Home() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-5">
             <button onClick={() => document.getElementById('rsvp')?.scrollIntoView({ behavior: 'smooth' })} className="btn-luxury">
-              Confirmar Presenca
+              Confirmar Presença
             </button>
             <button onClick={() => document.getElementById('presentes')?.scrollIntoView({ behavior: 'smooth' })} className="btn-luxury-outline">
               Ver Lista de Presentes
@@ -349,9 +350,9 @@ export default function Home() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="card-luxury text-center">
             <div className="text-4xl text-accent mb-4">◌</div>
-            <h3 className="text-2xl font-playfair mb-3">Uma Celebracao</h3>
+            <h3 className="text-2xl font-playfair mb-3">Uma Celebração</h3>
             <p className="text-muted-foreground">
-              Celebramos o amor, a uniao e a alegria de compartilhar este momento com voces.
+              Celebramos o amor, a união e a alegria de compartilhar este momento com vocês.
             </p>
           </div>
           <div className="card-luxury text-center">
@@ -373,7 +374,7 @@ export default function Home() {
 
       <section id="rsvp" className="section-alternate-3 py-20 px-4">
         <div className="max-w-3xl mx-auto text-center mb-10">
-          <h2 className="text-5xl font-playfair mb-4">Confirme Sua Presenca</h2>
+          <h2 className="text-5xl font-playfair mb-4">Confirme Sua Presença</h2>
           <p className="text-lg text-muted-foreground">
             Preencha seus dados para confirmar e liberar a escolha de presentes.
           </p>
@@ -411,7 +412,7 @@ export default function Home() {
               {formErrors.whatsapp ? (
                 <p className="text-sm text-destructive">{formErrors.whatsapp}</p>
               ) : (
-                <p className="text-xs text-muted-foreground">Digite DDD + numero</p>
+                <p className="text-xs text-muted-foreground">Digite DDD + número</p>
               )}
             </div>
 
@@ -435,7 +436,7 @@ export default function Home() {
             </div>
 
             <div className="space-y-2 md:col-span-1">
-              <Label htmlFor="dietary">Restricoes alimentares (opcional)</Label>
+              <Label htmlFor="dietary">Restrições alimentares (opcional)</Label>
               <Input
                 id="dietary"
                 value={formData.dietaryRestrictions}
@@ -464,7 +465,7 @@ export default function Home() {
                     Confirmando...
                   </>
                 ) : (
-                  'Confirmar Presenca'
+                  'Confirmar Presença'
                 )}
               </Button>
             </div>
@@ -515,23 +516,31 @@ export default function Home() {
           ) : gifts.length === 0 ? (
             <div className="text-center py-16">
               <Gift className="w-14 h-14 text-accent/40 mx-auto mb-3" />
-              <p className="text-muted-foreground">Nenhum presente disponivel no momento.</p>
+              <p className="text-muted-foreground">Nenhum presente disponível no momento.</p>
             </div>
           ) : (
             <div className="gift-grid">
               {gifts.map((gift) => (
                 <article key={gift.id} className="gift-card">
-                  {gift.imageUrl ? (
-                    <div className="gift-image-wrap">
-                      <img src={gift.imageUrl} alt={gift.name} className="gift-image" />
-                      {gift.status !== 'available' ? <span className="gift-chip">Indisponivel</span> : null}
-                    </div>
-                  ) : null}
+                  <div className="gift-image-wrap">
+                    <img
+                      src={getGiftImageSrc(gift.imageUrl, gift.name)}
+                      alt={gift.name}
+                      className="gift-image"
+                      loading="lazy"
+                      onError={(event) => {
+                        const target = event.currentTarget;
+                        target.onerror = null;
+                        target.src = getGiftPlaceholderDataUrl(gift.name);
+                      }}
+                    />
+                    {gift.status !== 'available' ? <span className="gift-chip">Indisponível</span> : null}
+                  </div>
 
                   <div className="p-5 flex-1 flex flex-col">
                     <h3 className="text-3xl font-playfair mb-2 leading-tight">{gift.name}</h3>
                     <p className="text-muted-foreground text-sm mb-4 flex-1">
-                      {gift.description || 'Contribuicao simbolica para nosso novo lar.'}
+                      {gift.description || 'Contribuição simbólica para nosso novo lar.'}
                     </p>
                     <p className="text-3xl font-playfair text-accent mb-4">
                       R$ {Number(gift.suggestedValue).toFixed(2)}
@@ -603,7 +612,7 @@ export default function Home() {
                   Fechar
                 </Button>
                 <Button className="flex-1 btn-luxury" onClick={handlePixConfirmed} disabled={markPaymentAsInformed.isPending}>
-                  {markPaymentAsInformed.isPending ? 'Registrando...' : 'Ja realizei o pagamento'}
+                  {markPaymentAsInformed.isPending ? 'Registrando...' : 'Já realizei o pagamento'}
                 </Button>
               </div>
             </div>
