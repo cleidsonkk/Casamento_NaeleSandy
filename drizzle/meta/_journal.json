@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1772039479154,
+      "tag": "0000_workable_puma",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1772039681108,
+      "tag": "0001_perfect_fantastic_four",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,220 @@
+import { useState } from 'react';
+import { trpc } from '@/lib/trpc';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Loader2, Trash2, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+
+export default function GiftsTab() {
+  const { data: gifts = [], isLoading, refetch } = trpc.gift.list.useQuery();
+  const deleteGift = trpc.gift.delete.useMutation();
+  const createGift = trpc.gift.create.useMutation();
+  const [showDialog, setShowDialog] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    imageUrl: '',
+    suggestedValue: '',
+  });
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.name.trim() || !formData.suggestedValue.trim()) {
+      toast.error('Nome e valor são obrigatórios');
+      return;
+    }
+
+    try {
+      await createGift.mutateAsync({
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        imageUrl: formData.imageUrl.trim() || undefined,
+        suggestedValue: formData.suggestedValue.trim(),
+      });
+
+      toast.success('Presente criado com sucesso');
+      setFormData({ name: '', description: '', imageUrl: '', suggestedValue: '' });
+      setShowDialog(false);
+      refetch();
+    } catch (error) {
+      toast.error('Erro ao criar presente');
+      console.error(error);
+    }
+  };
+
+  const handleDelete = async (giftId: number) => {
+    if (!confirm('Tem certeza que deseja remover este presente?')) return;
+
+    try {
+      await deleteGift.mutateAsync({ giftId });
+      toast.success('Presente removido com sucesso');
+      refetch();
+    } catch (error) {
+      toast.error('Erro ao remover presente');
+      console.error(error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  return (
+    <Card className="card-luxury">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle>Gerenciar Presentes</CardTitle>
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogTrigger asChild>
+            <Button className="btn-luxury">
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Presente
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Presente</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <Label htmlFor="name">Nome *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: Jogo de Cama"
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Descrição</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Descrição do presente"
+                  className="min-h-20"
+                />
+              </div>
+              <div>
+                <Label htmlFor="imageUrl">URL da Imagem</Label>
+                <Input
+                  id="imageUrl"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                  placeholder="https://..."
+                />
+              </div>
+              <div>
+                <Label htmlFor="value">Valor Sugerido (R$) *</Label>
+                <Input
+                  id="value"
+                  type="number"
+                  step="0.01"
+                  value={formData.suggestedValue}
+                  onChange={(e) => setFormData({ ...formData, suggestedValue: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDialog(false)}
+                  className="flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="flex-1 btn-luxury" disabled={createGift.isPending}>
+                  {createGift.isPending ? 'Criando...' : 'Criar'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </CardHeader>
+      <CardContent>
+        {gifts.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            Nenhum presente cadastrado ainda.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border">
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Ativo</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {gifts.map((gift) => (
+                  <TableRow key={gift.id} className="border-border hover:bg-muted/50">
+                    <TableCell className="font-medium">{gift.name}</TableCell>
+                    <TableCell>R$ {parseFloat(gift.suggestedValue.toString()).toFixed(2)}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                          gift.status === 'available'
+                            ? 'bg-green-100 text-green-700'
+                            : gift.status === 'reserved'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {gift.status === 'available'
+                          ? 'Disponível'
+                          : gift.status === 'reserved'
+                          ? 'Reservado'
+                          : 'Concluído'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={gift.isActive ? 'text-green-600 font-semibold' : 'text-red-600'}>
+                        {gift.isActive ? 'Sim' : 'Não'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDelete(gift.id)}
+                        disabled={deleteGift.isPending}
+                      >
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
