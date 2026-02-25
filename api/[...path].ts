@@ -1,33 +1,27 @@
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { createHTTPHandler } from "@trpc/server/adapters/standalone";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { appRouter } from "../server/routers";
-import { createContext } from "../server/_core/context";
-import { registerOAuthRoutes } from "../server/_core/oauth";
 
-const app = express();
+const createPublicContext = async (opts: { req: IncomingMessage; res: ServerResponse }) => ({
+  req: opts.req,
+  res: opts.res,
+  user: null,
+});
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
-
-registerOAuthRoutes(app);
-
-app.use(
-  "/api/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  }),
-);
-
-app.use(
-  "/trpc",
-  createExpressMiddleware({
-    router: appRouter,
-    createContext,
-  }),
-);
+const trpcHandler = createHTTPHandler({
+  router: appRouter,
+  createContext: createPublicContext,
+});
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  return app(req, res);
+  try {
+    if (req.url?.startsWith("/api/health") || req.url?.startsWith("/health")) {
+      return res.status(200).json({ ok: true });
+    }
+    return trpcHandler(req, res);
+  } catch (error) {
+    console.error("[api] handler crash:", error);
+    res.status(500).json({ error: "Function invocation failed" });
+  }
 }
